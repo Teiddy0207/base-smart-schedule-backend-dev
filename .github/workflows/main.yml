@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: Teiddy0207/base_money-backend
+  IMAGE_NAME: teiddy0207/base_money-backend
 
 jobs:
   build-and-push:
@@ -94,3 +94,4 @@ jobs:
             else
               echo "❌ Deploy development failed"
               exit 1
+            fi  # ⚠️ Dòng này bị thiếu!
