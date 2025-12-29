@@ -15,6 +15,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    environment: dev
     permissions:
       contents: read
       packages: write
@@ -54,7 +55,7 @@ jobs:
   deploy-development:
     needs: build-and-push
     runs-on: ubuntu-latest
-    environment: development
+    environment: dev
     steps:
       - uses: appleboy/ssh-action@v1.0.3
         with:
