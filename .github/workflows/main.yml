@@ -10,8 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: teiddy0207/base_money-backend
-  TAG: dev
+  IMAGE_NAME: Teiddy0207/base_money-backend
 
 jobs:
   build-and-push:
@@ -21,40 +20,39 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image: ${{ steps.set-image.outputs.image }}
+      image: ${{ steps.image.outputs.image }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set image name
-        id: set-image
+      - name: Set environment and tag
+        id: env
         run: |
-          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}"
-          echo "IMAGE=$IMAGE" >> $GITHUB_OUTPUT
-          echo "image=$IMAGE" >> $GITHUB_OUTPUT
-
+          echo "environment=dev" >> $GITHUB_OUTPUT
+          echo "tag=dev" >> $GITHUB_OUTPUT
       - uses: docker/setup-buildx-action@v3
-
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
-
       - id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: ${{ env.TAG }}
-
+          tags: type=raw,value=${{ steps.env.outputs.tag }}
       - id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.set-image.outputs.image }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Output image
+        id: image
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.env.outputs.tag }}" >> $GITHUB_OUTPUT
 
   deploy-development:
     needs: build-and-push
@@ -69,11 +67,9 @@ jobs:
           port: ${{ secrets.DEV_SSH_SERVER_PORT }}
           script: |
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
             docker stop base_money-backend || true
             docker rm base_money-backend || true
             docker network inspect safe_money_network >/dev/null 2>&1 || docker network create safe_money_network
-
             docker pull ${{ needs.build-and-push.outputs.image }}
             docker run -d \
               --name base_money-backend \
@@ -91,7 +87,6 @@ jobs:
               -e APP_DATABASE_DBNAME="${{ secrets.DEV_DB_NAME }}" \
               -e APP_REDIS_ADDRESS="${{ secrets.DEV_REDIS_ADDRESS }}" \
               ${{ needs.build-and-push.outputs.image }}
-
             docker image prune -f
             sleep 10
             if docker ps | grep -q base_money-backend; then
